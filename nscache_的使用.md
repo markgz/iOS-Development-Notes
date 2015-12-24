@@ -4,3 +4,59 @@
 有 objectForKey: 和 setObject: forKey: ，removeObjectForKey: removeAllObjects 等方法。
 
 2. 在使用 NSCache 的时候，可以监听 NSNotificationCenter post 的内存警告通知。在收到这个通知后，及时调用 remove 方法将缓存的文件从内存中移除掉。保证 app 不会因为内存紧张而被系统 kill 掉。 
+
+参考代码示例:
+
+	#import "GZMemoryCacheManager.h"
+	
+	@interface GZMemoryCacheManager ()
+	
+	@property (strong, nonatomic) NSCache *memoryCache;
+	
+	@end
+	
+	@implementation GZMemoryCacheManager
+	
+	+ (instancetype)shared
+	{
+	    static GZMemoryCacheManager *inst;
+	    static dispatch_once_t onceToken;
+	    dispatch_once(&onceToken, ^{
+	        inst = [[GZMemoryCacheManager alloc] init];
+	        inst.memoryCache = [[NSCache alloc] init];
+	        
+	        [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(clearMemoryCache) name:UIApplicationDidReceiveMemoryWarningNotification object:nil];
+	    });
+	    return inst;
+	}
+	
+	- (void)dealloc
+	{
+	    [[NSNotificationCenter defaultCenter] removeObserver:self];
+	}
+	
+	#pragma mark - Public Methods
+	
+	- (id)cachedObjectForKey:(NSString *)key
+	{
+	    if ([NSString isNilOrEmpty:key]) {
+	        return nil;
+	    }
+	    
+	    return [self.memoryCache objectForKey:key];
+	}
+	
+	- (void)storeObject:(id)object forKey:(NSString *)key
+	{
+	    if (![NSString isNilOrEmpty:key]) {
+	        [self.memoryCache setObject:object forKey:key];
+	    }
+	}
+	
+	- (void)clearMemoryCache
+	{
+	    [self.memoryCache removeAllObjects];
+	}
+	
+	@end
+    
